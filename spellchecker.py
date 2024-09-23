@@ -66,14 +66,14 @@ class WordChecker():
     # How can I run this in a separate thread to prevent thread timeout?
     def fetch_suggestions(self, word):
         search_queue = deque()
-        search_queue += self.fetch_permutations(word)
-        already_tried = {}
+        already_tried = set()
         results = []
+        search_queue += self.fetch_permutations(word)
         
         # Why is this giving me duplicate results?
-        while len(results) < 4 and search_queue and len(search_queue) < 5000000:
+        while len(results) < 4 and search_queue:
             try_word = search_queue.popleft()
-            already_tried[try_word] = True
+            already_tried.add(try_word)
             if self.check_word(try_word):
                 results.append(try_word)
             else:
@@ -81,16 +81,14 @@ class WordChecker():
         
         return results
 
-    def fetch_permutations(self, word, already_tried = {}):
+    def fetch_permutations(self, word, already_tried = set()):
         permutations = []
         for i in range(len(word)):
             for new_char in string.ascii_lowercase:
-                if new_char == word[i]:
-                    continue
                 next_permutation = word[:i] + new_char + word[i + 1:]
-                if not next_permutation in already_tried:
-                    already_tried[next_permutation] = True
-                    permutations.append(next_permutation)
+                if next_permutation == word or next_permutation in already_tried:
+                    continue
+                permutations.append(next_permutation)
         return permutations[::-1]
     
     def check_word(self, word):
