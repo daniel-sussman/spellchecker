@@ -19,15 +19,17 @@ class TextHandler:
 
     def handle_space(self, space):
         word = self.last_word
-        if self.word_checker.check_word(word.lower()):
-            pass
-        elif self.autocomplete:
+        if self.autocomplete_index > 0:
             word = self.autocomplete[self.autocomplete_index]
+        elif self.word_checker.check_word(word.lower()):
+            pass
         else:
             suggested_word = self.word_checker.fetch_suggestions(word)
             word = suggested_word or word
         self.text.append(word + space)
         self.last_word = ''
+        self.autocomplete = []
+        self.autocomplete_index = 0
         self.display()
 
     def handle_backspace(self):
@@ -45,14 +47,13 @@ class TextHandler:
             self.autocomplete_index += 1
         else:
             self.autocomplete_index -= 1
-        self.autocomplete_index = self.autocomplete_index % 5
+        self.autocomplete_index = self.autocomplete_index % len(self.autocomplete)
         self.display()
 
     def display(self):
         if len(self.last_word) > 2:
             self.autocomplete = self.word_checker.auto_complete(self.last_word.lower())
-        else:
-            self.autocomplete = []
+
         self.view.show(''.join(self.text) + self.last_word, self.autocomplete, self.autocomplete_index)
 
 class View():
