@@ -5,9 +5,12 @@ import os, string, json
 class TextHandler:
     def __init__(self):
         self.word_checker = WordChecker()
+        self.view = View(self)
         self.last_word = ""
         self.text = []
         self.next_word = []
+        self.autocomplete = []
+        self.autocomplete_index = 0
         self.display()
 
     def add_char(self, char):
@@ -15,18 +18,17 @@ class TextHandler:
         self.display()
 
     def handle_space(self, space):
-        if self.word_checker.check_word(self.last_word.lower()):
-            self.text.append(self.last_word + space)
-            self.last_word = ''
-            self.display()
+        word = self.last_word
+        if self.word_checker.check_word(word.lower()):
+            pass
+        elif self.autocomplete:
+            word = self.autocomplete[self.autocomplete_index]
         else:
-            suggestions = self.word_checker.fetch_suggestions(self.last_word)
-            if suggestions:
-                self.text.append(suggestions[0] + space)
-                self.last_word = ''
-                self.display(suggestions)
-            else:
-                self.display(f"No suggestions for '{self.last_word}'.")
+            suggested_word = self.word_checker.fetch_suggestions(word)
+            word = suggested_word or word
+        self.text.append(word + space)
+        self.last_word = ''
+        self.display()
 
     def handle_backspace(self):
         if self.last_word:
@@ -35,14 +37,34 @@ class TextHandler:
             self.last_word = self.text.pop()[:-1]
         self.display()
 
-    def display(self, message=None):
-        os.system('clear')
-        print(''.join(self.text) + self.last_word + '_')
-        print(message)
+    def move_autocomplete_selector(self, direction):
+        if not self.autocomplete:
+            return
+        
+        if direction == 'down':
+            self.autocomplete_index += 1
+        else:
+            self.autocomplete_index -= 1
+        self.autocomplete_index = self.autocomplete_index % 5
+        self.display()
+
+    def display(self):
         if len(self.last_word) > 2:
-            self.next_word = self.word_checker.auto_complete(self.last_word.lower())
-            print()
-            print(self.next_word)
+            self.autocomplete = self.word_checker.auto_complete(self.last_word.lower())
+        else:
+            self.autocomplete = []
+        self.view.show(''.join(self.text) + self.last_word, self.autocomplete, self.autocomplete_index)
+
+class View():
+    def __init__(self, text_handler):
+        self.text_handler = text_handler
+        
+    def show(self, text, autocomplete, autocomplete_index):
+        os.system('clear')
+        print(text + '_\n')
+        for (index, suggestion) in enumerate(autocomplete):
+            indent = " -> " if index == autocomplete_index else "    "
+            print(indent + suggestion)
 
 class WordChecker():
     def __init__(self):
@@ -61,25 +83,26 @@ class WordChecker():
     def auto_complete(self, proto_word):
         proto_word = ''.join([char for char in proto_word if char.isalpha()])
         words = self.valid_words.keys()
-        return [w for w in words if w[:len(proto_word)] == proto_word][:6]
+        return [w for w in words if w[:len(proto_word)] == proto_word][:5]
 
     # How can I run this in a separate thread to prevent thread timeout?
     def fetch_suggestions(self, word):
         search_queue = deque()
         already_tried = set()
-        results = []
+
         search_queue += self.fetch_permutations(word)
         
-        # Why is this giving me duplicate results?
-        while len(results) < 4 and search_queue:
+        while search_queue:
             try_word = search_queue.popleft()
+            if try_word in already_tried:
+                continue
             already_tried.add(try_word)
             if self.check_word(try_word):
-                results.append(try_word)
+                return try_word
             else:
                 search_queue += self.fetch_permutations(try_word, already_tried)
         
-        return results
+        return None
 
     def fetch_permutations(self, word, already_tried = set()):
         permutations = []
@@ -109,6 +132,10 @@ def on_press(key, handler):
             handler.handle_space('\n')
         elif key == keyboard.Key.backspace:
             handler.handle_backspace()
+        elif key == keyboard.Key.down:
+            handler.move_autocomplete_selector('down')
+        elif key == keyboard.Key.up:
+            handler.move_autocomplete_selector('up')
 
 def on_release(key):
     if key == keyboard.Key.esc:
