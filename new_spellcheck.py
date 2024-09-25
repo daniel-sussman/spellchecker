@@ -1,7 +1,5 @@
 from pynput import keyboard
-from longest_substring import longest_common_substring
-from collections import deque
-import os, string, json, Levenshtein
+import os, json, Levenshtein
 
 class TextHandler:
     def __init__(self):
