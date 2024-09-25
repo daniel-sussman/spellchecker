@@ -30,6 +30,7 @@ class TextHandler:
             return
 
         self.suggestions = []
+        self.selector_index = 0
         self.text.append(word + space)
         self.last_word = ''
         self.display()
